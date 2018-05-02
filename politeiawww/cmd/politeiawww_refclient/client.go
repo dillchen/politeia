@@ -197,6 +197,7 @@ func (c *ctx) newUser(email string, password string) (string, *identity.FullIden
 	u := v1.NewUser{
 		Email:     email,
 		Password:  password,
+		Username:  password,
 		PublicKey: hex.EncodeToString(id.Public.Key[:]),
 	}
 
@@ -288,7 +289,6 @@ func (c *ctx) comment(id *identity.FullIdentity, token, comment, parentID string
 	msg := []byte(cm.Token + cm.ParentID + cm.Comment)
 	sig := id.SignMessage(msg)
 	cm.Signature = hex.EncodeToString(sig[:])
-
 	cm.PublicKey = hex.EncodeToString(id.Public.Key[:])
 
 	responseBody, err := c.makeRequest("POST", v1.RouteNewComment, cm)
