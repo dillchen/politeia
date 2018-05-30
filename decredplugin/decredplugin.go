@@ -60,7 +60,7 @@ type BallotReply struct {
 }
 
 // EncodeCastVoteReplies encodes CastVotes into a JSON byte slice.
-func EncodeBallotReply(br []BallotReply) ([]byte, error) {
+func EncodeBallotReply(br BallotReply) ([]byte, error) {
 	return json.Marshal(br)
 }
 

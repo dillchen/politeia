@@ -969,9 +969,11 @@ func (g *gitBackEnd) validateVoteBit(token, bit string) error {
 	return _validateVoteBit(*vote, b)
 }
 
-func (g *gitBackEnd) _pluginCastVotes(payload string) (string, error) {
-	log.Tracef("pluginCastVotes: %v", payload)
-	votes, err := decredplugin.DecodeCastVotes([]byte(payload))
+func (g *gitBackEnd) _pluginBallot(payload string) (string, error) {
+	// XXX convert this to journal
+
+	log.Tracef("_pluginBallot: %v", payload)
+	ballot, err := decredplugin.DecodeBallot([]byte(payload))
 	if err != nil {
 		return "", fmt.Errorf("DecodeVote %v", err)
 	}
@@ -991,14 +993,16 @@ func (g *gitBackEnd) _pluginCastVotes(payload string) (string, error) {
 		vote  *decredplugin.CastVote
 		index int
 	}
-	cbr := make([]decredplugin.CastVoteReply, len(votes))
+	br := decredplugin.BallotReply{
+		Receipts: make([]decredplugin.CastVoteReply, len(ballot.Votes)),
+	}
 	dedupVotes := make(map[string]dedupVote)
-	for k, v := range votes {
+	for k, v := range ballot.Votes {
 		// Check if this is a duplicate vote
 		key := v.Token + v.Ticket
 		if _, ok := dedupVotes[key]; ok {
-			cbr[k].Error = fmt.Sprintf("duplicate vote token %v "+
-				"ticket %v", v.Token, v.Ticket)
+			br.Receipts[k].Error = fmt.Sprintf("duplicate vote "+
+				"token %v ticket %v", v.Token, v.Ticket)
 			continue
 		}
 
@@ -1006,41 +1010,43 @@ func (g *gitBackEnd) _pluginCastVotes(payload string) (string, error) {
 		err = g.validateVoteBit(v.Token, v.VoteBit)
 		if err != nil {
 			if e, ok := err.(invalidVoteBitError); ok {
-				cbr[k].Error = e.err.Error()
+				br.Receipts[k].Error = e.err.Error()
 				continue
 			}
 			t := time.Now().Unix()
-			log.Errorf("pluginCastVotes: validateVoteBit %v %v %v",
+			log.Errorf("_pluginBallot: validateVoteBit %v %v %v",
 				v.Token, t, err)
-			cbr[k].Error = fmt.Sprintf("internal error %v", t)
+			br.Receipts[k].Error = fmt.Sprintf("internal error %v",
+				t)
 			continue
 		}
 
-		cbr[k].ClientSignature = v.Signature
+		br.Receipts[k].ClientSignature = v.Signature
 		// Verify that vote is signed correctly
 		err = g.validateVote(v.Token, v.Ticket, v.VoteBit, v.Signature)
 		if err != nil {
 			t := time.Now().Unix()
-			log.Errorf("pluginCastVotes: validateVote %v %v %v",
+			log.Errorf("_pluginBallot: validateVote %v %v %v",
 				v.Token, t, err)
-			cbr[k].Error = fmt.Sprintf("internal error %v", t)
+			br.Receipts[k].Error = fmt.Sprintf("internal error %v",
+				t)
 			continue
 		}
 
 		// Sign ClientSignature
 		signature := fi.SignMessage([]byte(v.Signature))
-		cbr[k].Signature = hex.EncodeToString(signature[:])
+		br.Receipts[k].Signature = hex.EncodeToString(signature[:])
 		dedupVotes[key] = dedupVote{
-			vote:  &votes[k],
+			vote:  &ballot.Votes[k],
 			index: k,
 		}
 	}
 
 	// See if we can short circuit the lock magic
 	if len(dedupVotes) == 0 {
-		reply, err := decredplugin.EncodeCastVoteReplies(cbr)
+		reply, err := decredplugin.EncodeBallotReply(br)
 		if err != nil {
-			return "", fmt.Errorf("Could not encode CastVoteReply"+
+			return "", fmt.Errorf("Could not encode BallotReply"+
 				" %v", err)
 		}
 		return string(reply), nil
@@ -1100,9 +1106,10 @@ func (g *gitBackEnd) _pluginCastVotes(payload string) (string, error) {
 				0666)
 			if err != nil {
 				t := time.Now().Unix()
-				log.Errorf("pluginCastVotes: OpenFile %v %v %v",
+				log.Errorf("_pluginBallot: OpenFile %v %v %v",
 					v.vote.Token, t, err)
-				cbr[v.index].Error = fmt.Sprintf("internal error %v", t)
+				br.Receipts[v.index].Error =
+					fmt.Sprintf("internal error %v", t)
 				continue
 			}
 			f = &file{
@@ -1126,9 +1133,10 @@ func (g *gitBackEnd) _pluginCastVotes(payload string) (string, error) {
 					}
 
 					t := time.Now().Unix()
-					log.Errorf("pluginCastVotes: Decode %v %v %v",
+					log.Errorf("_pluginBallot: Decode %v %v %v",
 						v.vote.Token, t, err)
-					cbr[v.index].Error = fmt.Sprintf("internal error %v", t)
+					br.Receipts[v.index].Error =
+						fmt.Sprintf("internal error %v", t)
 					continue
 				}
 				cvs = append(cvs, cv)
@@ -1140,9 +1148,10 @@ func (g *gitBackEnd) _pluginCastVotes(payload string) (string, error) {
 				// Sanity
 				if _, ok := f.content[key]; ok {
 					t := time.Now().Unix()
-					log.Errorf("pluginCastVotes: not found %v %v %v",
+					log.Errorf("_pluginBallot: not found %v %v %v",
 						key, t, err)
-					cbr[v.index].Error = fmt.Sprintf("internal error %v", t)
+					br.Receipts[v.index].Error =
+						fmt.Sprintf("internal error %v", t)
 					continue
 				}
 				f.content[key] = struct{}{}
@@ -1155,7 +1164,8 @@ func (g *gitBackEnd) _pluginCastVotes(payload string) (string, error) {
 		key := v.vote.Token + v.vote.Ticket
 		if _, ok := f.content[key]; ok {
 			index := dedupVotes[key].index
-			cbr[index].Error = "ticket already voted on proposal"
+			br.Receipts[index].Error = "ticket already voted on " +
+				"proposal"
 			log.Debugf("duplicate vote token %v ticket %v",
 				v.vote.Token, v.vote.Ticket)
 			continue
@@ -1165,18 +1175,20 @@ func (g *gitBackEnd) _pluginCastVotes(payload string) (string, error) {
 		_, err = f.fileHandle.Seek(0, 2)
 		if err != nil {
 			t := time.Now().Unix()
-			log.Errorf("pluginCastVotes: Seek %v %v %v",
+			log.Errorf("_pluginBallot: Seek %v %v %v",
 				v.vote.Token, t, err)
-			cbr[v.index].Error = fmt.Sprintf("internal error %v", t)
+			br.Receipts[v.index].Error =
+				fmt.Sprintf("internal error %v", t)
 			continue
 		}
 		e := json.NewEncoder(f.fileHandle)
 		err = e.Encode(*v.vote)
 		if err != nil {
 			t := time.Now().Unix()
-			log.Errorf("pluginCastVotes: Encode %v %v %v",
+			log.Errorf("_pluginBallot: Encode %v %v %v",
 				v.vote.Token, t, err)
-			cbr[v.index].Error = fmt.Sprintf("internal error %v", t)
+			br.Receipts[v.index].Error =
+				fmt.Sprintf("internal error %v", t)
 			continue
 		}
 	}
@@ -1192,9 +1204,10 @@ func (g *gitBackEnd) _pluginCastVotes(payload string) (string, error) {
 		err = g.gitAdd(g.unvetted, filepath.Join(v.token, v.mdFilename))
 		if err != nil {
 			t := time.Now().Unix()
-			log.Errorf("pluginCastVotes: gitAdd %v %v %v",
+			log.Errorf("_pluginBallot: gitAdd %v %v %v",
 				v.token, t, err)
-			cbr[v.index].Error = fmt.Sprintf("internal error %v", t)
+			br.Receipts[v.index].Error =
+				fmt.Sprintf("internal error %v", t)
 			continue
 		}
 	}
@@ -1215,15 +1228,15 @@ func (g *gitBackEnd) _pluginCastVotes(payload string) (string, error) {
 		}
 	}
 
-	reply, err := decredplugin.EncodeCastVoteReplies(cbr)
+	reply, err := decredplugin.EncodeBallotReply(br)
 	if err != nil {
-		return "", fmt.Errorf("Could not encode CastVoteReply %v", err)
+		return "", fmt.Errorf("Could not encode BallotReply %v", err)
 	}
 
 	return string(reply), nil
 }
 
-func (g *gitBackEnd) pluginCastVotes(payload string) (string, error) {
+func (g *gitBackEnd) pluginBallot(payload string) (string, error) {
 	return "", fmt.Errorf("boom")
 }
 

@@ -1950,9 +1950,9 @@ func (g *gitBackEnd) Plugin(command, payload string) (string, string, error) {
 	case decredplugin.CmdStartVote:
 		payload, err := g.pluginStartVote(payload)
 		return decredplugin.CmdStartVote, payload, err
-	case decredplugin.CmdCastVotes:
-		payload, err := g.pluginCastVotes(payload)
-		return decredplugin.CmdCastVotes, payload, err
+	case decredplugin.CmdBallot:
+		payload, err := g.pluginBallot(payload)
+		return decredplugin.CmdBallot, payload, err
 	case decredplugin.CmdProposalVotes:
 		payload, err := g.pluginProposalVotes(payload)
 		return decredplugin.CmdProposalVotes, payload, err
