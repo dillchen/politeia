@@ -21,7 +21,6 @@ import (
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/agl/ed25519"
-	"github.com/decred/politeia/decredplugin"
 	"github.com/decred/politeia/politeiad/api/v1/identity"
 	"github.com/decred/politeia/politeiawww/api/v1"
 	"github.com/decred/politeia/util"
@@ -326,11 +325,11 @@ func (c *ctx) commentGet(token string) (*v1.GetCommentsReply, error) {
 func (c *ctx) startVote(id *identity.FullIdentity, token string) (*v1.StartVoteReply, error) {
 	sv := v1.StartVote{
 		PublicKey: hex.EncodeToString(id.Public.Key[:]),
-		Vote: decredplugin.Vote{
+		Vote: v1.Vote{
 			Token:    token,
 			Mask:     0x03, // bit 0 no, bit 1 yes
 			Duration: 2016,
-			Options: []decredplugin.VoteOption{
+			Options: []v1.VoteOption{
 				{
 					Id:          "no",
 					Description: "Don't approve proposal",

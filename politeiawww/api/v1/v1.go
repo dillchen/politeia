@@ -2,8 +2,6 @@ package v1
 
 import (
 	"fmt"
-
-	"github.com/decred/politeia/decredplugin"
 )
 
 type ErrorStatusT int
@@ -41,8 +39,8 @@ const (
 	RouteActiveVote          = "/proposals/activevote" // XXX rename to ActiveVotes
 	RouteCastVotes           = "/proposals/castvotes"
 	// XXX should we use a fancy route like the one underneath?
-	//RouteProposalVotes    = "/proposals/{token:[A-z0-9]{64}}/votes"
-	RouteProposalVotes = "/proposals/voteresults"
+	//RouteVoteResults    = "/proposals/{token:[A-z0-9]{64}}/votes"
+	RouteVoteResults = "/proposals/voteresults"
 
 	// VerificationTokenSize is the size of verification token in bytes
 	VerificationTokenSize = 32
@@ -532,14 +530,29 @@ type PolicyReply struct {
 	BackendPublicKey           string   `json:"backendpublickey"`
 }
 
+// VoteOption describes a single vote option.
+type VoteOption struct {
+	Id          string `json:"id"`          // Single unique word identifying vote (e.g. yes)
+	Description string `json:"description"` // Longer description of the vote.
+	Bits        uint64 `json:"bits"`        // Bits used for this option
+}
+
+// Vote represents the vote options for vote that is identified by its token.
+type Vote struct {
+	Token    string `json:"token"`    // Token that identifies vote
+	Mask     uint64 `json:"mask"`     // Valid votebits
+	Duration uint32 `json:"duration"` // Duration in blocks
+	Options  []VoteOption
+}
+
 // ActiveVote obtains all proposals that have active votes.
 type ActiveVote struct{}
 
 // ProposalVoteTuple is the proposal, vote and vote details.
 type ProposalVoteTuple struct {
-	Proposal    ProposalRecord              `json:"proposal"`    // Proposal
-	Vote        decredplugin.Vote           `json:"vote"`        // Vote bits and mask
-	VoteDetails decredplugin.StartVoteReply `json:"votedetails"` // Eligible tickets and other details
+	Proposal    ProposalRecord `json:"proposal"`    // Proposal
+	Vote        Vote           `json:"vote"`        // Vote bits and mask
+	VoteDetails StartVoteReply `json:"votedetails"` // Eligible tickets and other details
 }
 
 // ActiveVoteReply returns all proposals that have active votes.
@@ -550,35 +563,54 @@ type ActiveVoteReply struct {
 // plugin commands
 // StartVote starts the voting process for a proposal.
 type StartVote struct {
-	PublicKey string            `json:"publickey"` // Key used for signature.
-	Vote      decredplugin.Vote `json:"vote"`      // Vote
-	Signature string            `json:"signature"` // Signature of Votehash
+	PublicKey string `json:"publickey"` // Key used for signature.
+	Vote      Vote   `json:"vote"`      // Vote
+	Signature string `json:"signature"` // Signature of Votehash
 }
 
 // StartVoteReply returns the eligible ticket pool.
 type StartVoteReply struct {
-	VoteDetails decredplugin.StartVoteReply `json:"votedetails"`
+	StartBlockHeight string   `json:"startblockheight"` // Block height
+	StartBlockHash   string   `json:"startblockhash"`   // Block hash
+	EndHeight        string   `json:"endheight"`        // Height of vote end
+	EligibleTickets  []string `json:"eligibletickets"`  // Valid voting tickets
+}
+
+// CastVote is a signed vote.
+type CastVote struct {
+	Token     string `json:"token"`     // Proposal ID
+	Ticket    string `json:"ticket"`    // Ticket ID
+	VoteBit   string `json:"votebit"`   // Vote bit that was selected, this is encode in hex
+	Signature string `json:"signature"` // Signature of Token+Ticket+VoteBit
 }
 
 // Ballot is a batch of votes that are sent to the server.
 type Ballot struct {
-	Votes []decredplugin.CastVote `json:"votes"`
+	Votes []CastVote `json:"votes"`
+}
+
+// CastVoteReply is the answer to the CastVote command.
+type CastVoteReply struct {
+	ClientSignature string `json:"clientsignature"` // Signature that was sent in
+	Signature       string `json:"signature"`       // Signature of the ClientSignature
+	Error           string `json:"error"`           // Error if something wen't wrong during casting a vote
 }
 
 // CastVotesReply is a reply to a batched list of votes.
 type BallotReply struct {
-	Receipts []decredplugin.CastVoteReply `json:"receipts"`
+	Receipts []CastVoteReply `json:"receipts"`
 }
 
-// GetProposalVote retrieves a single proposal vote results from the server.
-type ProposalVotes struct {
-	Vote decredplugin.VoteResults `json:"vote"` // Vote contains the proposal ID
+// VoteResults retrieves a single proposal vote results from the server.
+type VoteResults struct {
+	Token string `json:"token"` // Censorship token
 }
 
-// GetProposalVoteReply returns the original proposal and the associated votes.
-type ProposalVotesReply struct {
-	Vote      decredplugin.Vote       `json:"vote"`      // Original vote
-	CastVotes []decredplugin.CastVote `json:"castvotes"` // Vote results
+// VoteResultsReply returns the original proposal vote and the associated cast
+// votes.
+type VoteResultsReply struct {
+	Vote      Vote       `json:"vote"`      // Original vote
+	CastVotes []CastVote `json:"castvotes"` // Vote results
 }
 
 // Comment is the structure that describes the full server side content.  It

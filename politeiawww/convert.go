@@ -1,9 +1,88 @@
 package main
 
 import (
+	"github.com/decred/politeia/decredplugin"
 	pd "github.com/decred/politeia/politeiad/api/v1"
 	www "github.com/decred/politeia/politeiawww/api/v1"
 )
+
+func convertCastVoteReplyFromDecredPlugin(cvr decredplugin.CastVoteReply) www.CastVoteReply {
+	return www.CastVoteReply{
+		ClientSignature: cvr.ClientSignature,
+		Signature:       cvr.Signature,
+		Error:           cvr.Error,
+	}
+}
+
+func convertCastVoteFromWWW(b www.CastVote) decredplugin.CastVote {
+	return decredplugin.CastVote{
+		Token:     b.Token,
+		Ticket:    b.Ticket,
+		VoteBit:   b.VoteBit,
+		Signature: b.Signature,
+	}
+}
+
+func convertBallotFromWWW(b www.Ballot) decredplugin.Ballot {
+	br := decredplugin.Ballot{
+		Votes: make([]decredplugin.CastVotes{}, 0, len(b.Votes)),
+	}
+	for _, v := range b.Votes {
+		br.Votes = append(br.Votes, convertCastVoteFromWWW(v))
+	}
+	return br
+}
+
+func convertBallotReplyFromDecredPlugin(b decredplugin.BallotReply) www.BallotReply {
+	br := www.BallotReply{
+		Receipts: make([]www.CastVoteReply{}, 0, len(b.Receipts)),
+	}
+	for _, v := range b.Receipts {
+		br.Receipts = append(br.Receipts,
+			convertCastVoteReplyFromDecredPlugin(v))
+	}
+	return br
+}
+
+func convertVoteOptionFromWWW(vo www.VoteOption) decredplugin.VoteOption {
+	return decredplugin.VoteOption{
+		Id:          vo.Id,
+		Description: vo.Description,
+		Bits:        vo.Bits,
+	}
+}
+
+func convertVoteOptionsFromWWW(vo []www.VoteOption) []decredplugin.VoteOption {
+	vor := make([]decredplugin.VoteOption, 0, len(vo))
+	for _, v := range vo {
+		convertVoteOptionFromWWW(v)
+	}
+	return vor
+}
+
+func convertVoteFromWWW(v www.Vote) decredplugin.Vote {
+	return decredplugin.Vote{
+		Token:    v.Token,
+		Mask:     v.Mask,
+		Duration: v.Duration,
+		Options:  convertVoteOptionsFromWWW(v.Options),
+	}
+}
+
+func convertStartVoteFromWWW(sv www.StartVote) decredplugin.StartVote {
+	return decredplugin.StartVote{
+		Vote: ConvertVoteFromWWW(sv.Vote),
+	}
+}
+
+func convertStartVoteReplyFromDecredplugin(svr decredplugin.StartVoteReply) www.StartVoteReply {
+	return www.StartVoteReply{
+		StartBlockHeight: svr.StartBlockHeight,
+		StartBlockHash:   svr.StartBlockHash,
+		EndHeight:        svr.EndHeight,
+		EligibleTickets:  svr.EligibleTickets,
+	}
+}
 
 func convertPropStatusFromWWW(s www.PropStatusT) pd.RecordStatusT {
 	switch s {

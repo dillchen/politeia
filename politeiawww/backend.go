@@ -1853,7 +1853,7 @@ func (b *backend) ProcessActiveVote() (*www.ActiveVoteReply, error) {
 	return &avr, nil
 }
 
-func (b *backend) ProcessCastVotes(cv *www.Ballot) (*www.BallotReply, error) {
+func (b *backend) ProcessCastVotes(ballot *www.Ballot) (*www.BallotReply, error) {
 	log.Tracef("ProcessCastVotes")
 
 	challenge, err := util.Random(pd.ChallengeSize)
@@ -1861,16 +1861,15 @@ func (b *backend) ProcessCastVotes(cv *www.Ballot) (*www.BallotReply, error) {
 		return nil, err
 	}
 
-	// encode cast votes for plugin
-	payload, err := decredplugin.EncodeCastVotes(cv.Votes)
+	payload, err := decredplugin.EncodeBallot(convertBallotFromWWW(*ballot))
 	if err != nil {
 		return nil, err
 	}
 	pc := pd.PluginCommand{
 		Challenge: hex.EncodeToString(challenge),
 		ID:        decredplugin.ID,
-		Command:   decredplugin.CmdCastVotes,
-		CommandID: decredplugin.CmdCastVotes,
+		Command:   decredplugin.CmdBallot,
+		CommandID: decredplugin.CmdBallot,
 		Payload:   string(payload),
 	}
 
@@ -1894,12 +1893,12 @@ func (b *backend) ProcessCastVotes(cv *www.Ballot) (*www.BallotReply, error) {
 	}
 
 	// Decode plugin reply
-	receipts, err := decredplugin.DecodeCastVoteReplies([]byte(reply.Payload))
+	br, err := decredplugin.DecodeBallotReply([]byte(reply.Payload))
 	if err != nil {
 		return nil, err
 	}
-
-	return &www.BallotReply{Receipts: receipts}, nil
+	brr := convertBallotReplyFromDecredPlugin(*br)
+	return &brr, nil
 }
 
 func (b *backend) ProcessStartVote(sv www.StartVote, user *database.User) (*www.StartVoteReply, error) {
@@ -1914,7 +1913,8 @@ func (b *backend) ProcessStartVote(sv www.StartVote, user *database.User) (*www.
 	// XXX validate vote bits
 
 	// Create vote bits as plugin payload
-	payload, err := decredplugin.EncodeVote(sv.Vote)
+	dsv := convertStartVoteFromWWW(sv)
+	payload, err := decredplugin.EncodeStartVote(dsv)
 	if err != nil {
 		return nil, err
 	}
@@ -1978,13 +1978,13 @@ func (b *backend) ProcessStartVote(sv www.StartVote, user *database.User) (*www.
 	if err != nil {
 		return nil, err
 	}
-	ir.voting = *vr
+	ir.voting = convertStartVoteReplyFromDecredplugin(*vr)
 	ir.votebits = sv.Vote
 	b.inventory[sv.Vote.Token] = &ir
 
-	return &www.StartVoteReply{
-		VoteDetails: *vr,
-	}, nil
+	// return a copy
+	rv := ir.voting
+	return &rv, nil
 }
 
 func (b *backend) ProcessProposalVotes(gpv *www.ProposalVotes) (*www.ProposalVotesReply, error) {

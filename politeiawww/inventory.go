@@ -22,12 +22,12 @@ var (
 )
 
 type inventoryRecord struct {
-	record     pd.Record                   // actual record
-	proposalMD BackendProposalMetadata     // proposal metadata
-	comments   map[string]www.Comment      // [id]comment
-	changes    []MDStreamChanges           // changes metadata
-	votebits   decredplugin.Vote           // vote bits and options
-	voting     decredplugin.StartVoteReply // voting metadata
+	record     pd.Record               // actual record
+	proposalMD BackendProposalMetadata // proposal metadata
+	comments   map[string]www.Comment  // [id]comment
+	changes    []MDStreamChanges       // changes metadata
+	votebits   www.Vote                // vote bits and options
+	voting     www.StartVoteReply      // voting metadata
 }
 
 // proposalsRequest is used for passing parameters into the

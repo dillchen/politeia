@@ -7,7 +7,7 @@ const (
 	Version              = "1"
 	ID                   = "decred"
 	CmdStartVote         = "startvote"
-	CmdCastVotes         = "castvotes"
+	CmdBallot            = "ballot"
 	CmdBestBlock         = "bestblock"
 	CmdNewComment        = "newcomment"
 	CmdGetComments       = "getcomments"
@@ -25,45 +25,55 @@ type CastVote struct {
 	Signature string `json:"signature"` // Signature of Token+Ticket+VoteBit
 }
 
+// Ballot is a batch of votes that are sent to the server.
+type Ballot struct {
+	Votes []CastVote `json:"votes"`
+}
+
 // EncodeCastVotes encodes CastVotes into a JSON byte slice.
-func EncodeCastVotes(cv []CastVote) ([]byte, error) {
-	return json.Marshal(cv)
+func EncodeBallot(b Ballot) ([]byte, error) {
+	return json.Marshal(b)
 }
 
 // DecodeCastVotes decodes a JSON byte slice into a CastVotes.
-func DecodeCastVotes(payload []byte) ([]CastVote, error) {
-	var cv []CastVote
+func DecodeBallot(payload []byte) (*Ballot, error) {
+	var b Ballot
 
-	err := json.Unmarshal(payload, &cv)
+	err := json.Unmarshal(payload, &b)
 	if err != nil {
 		return nil, err
 	}
 
-	return cv, nil
+	return &b, nil
 }
 
-// CastVoteReply is the answer to the CastVote command.
+// CastVoteReply contains the signature or error to a cast vote command.
 type CastVoteReply struct {
 	ClientSignature string `json:"clientsignature"` // Signature that was sent in
 	Signature       string `json:"signature"`       // Signature of the ClientSignature
 	Error           string `json:"error"`           // Error if something wen't wrong during casting a vote
 }
 
-// EncodeCastVoteReplies encodes CastVotes into a JSON byte slice.
-func EncodeCastVoteReplies(cvr []CastVoteReply) ([]byte, error) {
-	return json.Marshal(cvr)
+// BallotReply is a reply to a batched list of votes.
+type BallotReply struct {
+	Receipts []CastVoteReply `json:"receipts"`
 }
 
-// DecodeCastVoteReplies decodes a JSON byte slice into a CastVotes.
-func DecodeCastVoteReplies(payload []byte) ([]CastVoteReply, error) {
-	var cvr []CastVoteReply
+// EncodeCastVoteReplies encodes CastVotes into a JSON byte slice.
+func EncodeBallotReply(br []BallotReply) ([]byte, error) {
+	return json.Marshal(br)
+}
 
-	err := json.Unmarshal(payload, &cvr)
+// DecodeBallotReply decodes a JSON byte slice into a CastVotes.
+func DecodeBallotReply(payload []byte) (*BallotReply, error) {
+	var br BallotReply
+
+	err := json.Unmarshal(payload, &br)
 	if err != nil {
 		return nil, err
 	}
 
-	return cvr, nil
+	return &br, nil
 }
 
 // VoteOption describes a single vote option.
@@ -102,6 +112,23 @@ func DecodeVote(payload []byte) (*Vote, error) {
 // provided vote bits.
 type StartVote struct {
 	Vote Vote `json:"vote"` // Vote + options
+}
+
+// EncodeStartVoteencodes StartVoteinto a JSON byte slice.
+func EncodeStartVote(v StartVote) ([]byte, error) {
+	return json.Marshal(v)
+}
+
+// DecodeVotedecodes a JSON byte slice into a StartVote.
+func DecodeStartVote(payload []byte) (*StartVote, error) {
+	var sv StartVote
+
+	err := json.Unmarshal(payload, &sv)
+	if err != nil {
+		return nil, err
+	}
+
+	return &sv, nil
 }
 
 // StartVoteReply is the reply to StartVote.
