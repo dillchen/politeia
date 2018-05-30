@@ -25,7 +25,7 @@ func convertCastVoteFromWWW(b www.CastVote) decredplugin.CastVote {
 
 func convertBallotFromWWW(b www.Ballot) decredplugin.Ballot {
 	br := decredplugin.Ballot{
-		Votes: make([]decredplugin.CastVotes{}, 0, len(b.Votes)),
+		Votes: make([]decredplugin.CastVote, 0, len(b.Votes)),
 	}
 	for _, v := range b.Votes {
 		br.Votes = append(br.Votes, convertCastVoteFromWWW(v))
@@ -35,7 +35,7 @@ func convertBallotFromWWW(b www.Ballot) decredplugin.Ballot {
 
 func convertBallotReplyFromDecredPlugin(b decredplugin.BallotReply) www.BallotReply {
 	br := www.BallotReply{
-		Receipts: make([]www.CastVoteReply{}, 0, len(b.Receipts)),
+		Receipts: make([]www.CastVoteReply, 0, len(b.Receipts)),
 	}
 	for _, v := range b.Receipts {
 		br.Receipts = append(br.Receipts,
@@ -71,7 +71,7 @@ func convertVoteFromWWW(v www.Vote) decredplugin.Vote {
 
 func convertStartVoteFromWWW(sv www.StartVote) decredplugin.StartVote {
 	return decredplugin.StartVote{
-		Vote: ConvertVoteFromWWW(sv.Vote),
+		Vote: convertVoteFromWWW(sv.Vote),
 	}
 }
 
@@ -81,6 +81,61 @@ func convertStartVoteReplyFromDecredplugin(svr decredplugin.StartVoteReply) www.
 		StartBlockHash:   svr.StartBlockHash,
 		EndHeight:        svr.EndHeight,
 		EligibleTickets:  svr.EligibleTickets,
+	}
+}
+
+func convertVoteResultsFromWWW(vr www.VoteResults) decredplugin.VoteResults {
+	return decredplugin.VoteResults{
+		Token: vr.Token,
+	}
+}
+
+func convertVoteOptionFromDecredplugin(vo decredplugin.VoteOption) www.VoteOption {
+	return www.VoteOption{
+		Id:          vo.Id,
+		Description: vo.Description,
+		Bits:        vo.Bits,
+	}
+}
+
+func convertVoteOptionsFromDecredplugin(vo []decredplugin.VoteOption) []www.VoteOption {
+	vor := make([]www.VoteOption, 0, len(vo))
+	for _, v := range vo {
+		vor = append(vor, convertVoteOptionFromDecredplugin(v))
+	}
+	return vor
+}
+
+func convertVoteFromDecredplugin(v decredplugin.Vote) www.Vote {
+	return www.Vote{
+		Token:    v.Token,
+		Mask:     v.Mask,
+		Duration: v.Duration,
+		Options:  convertVoteOptionsFromDecredplugin(v.Options),
+	}
+}
+
+func convertCastVoteFromDecredplugin(cv decredplugin.CastVote) www.CastVote {
+	return www.CastVote{
+		Token:     cv.Token,
+		Ticket:    cv.Ticket,
+		VoteBit:   cv.VoteBit,
+		Signature: cv.Signature,
+	}
+}
+
+func convertCastVotesFromDecredplugin(cv []decredplugin.CastVote) []www.CastVote {
+	cvr := make([]www.CastVote, 0, len(cv))
+	for _, v := range cv {
+		cvr = append(cvr, convertCastVoteFromDecredplugin(v))
+	}
+	return cvr
+}
+
+func convertVoteResultsReplyFromDecredplugin(vrr decredplugin.VoteResultsReply) www.VoteResultsReply {
+	return www.VoteResultsReply{
+		Vote:      convertVoteFromDecredplugin(vrr.Vote),
+		CastVotes: convertCastVotesFromDecredplugin(vrr.CastVotes),
 	}
 }
 

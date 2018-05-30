@@ -100,16 +100,17 @@ func (b *backend) loadChanges(token, payload string) error {
 //
 // This function must be called WITH the mutex held.
 func (b *backend) loadVoting(token, payload string) error {
-	f := strings.NewReader(payload)
-	d := json.NewDecoder(f)
-	var md decredplugin.StartVoteReply
-	if err := d.Decode(&md); err == io.EOF {
-		return nil
-	} else if err != nil {
-		return err
-	}
-	p := b.inventory[token]
-	p.voting = md
+	//f := strings.NewReader(payload)
+	//d := json.NewDecoder(f)
+	//var md decredplugin.StartVoteReply
+	//if err := d.Decode(&md); err == io.EOF {
+	//	return nil
+	//} else if err != nil {
+	//	return err
+	//}
+	//p := b.inventory[token]
+	//p.voting = md
+	panic("loadVoting")
 	return nil
 }
 
@@ -117,16 +118,17 @@ func (b *backend) loadVoting(token, payload string) error {
 //
 // This function must be called WITH the mutex held.
 func (b *backend) loadVoteBits(token, payload string) error {
-	f := strings.NewReader(payload)
-	d := json.NewDecoder(f)
-	var md decredplugin.Vote
-	if err := d.Decode(&md); err == io.EOF {
-		return nil
-	} else if err != nil {
-		return err
-	}
-	p := b.inventory[token]
-	p.votebits = md
+	//f := strings.NewReader(payload)
+	//d := json.NewDecoder(f)
+	//var md decredplugin.Vote
+	//if err := d.Decode(&md); err == io.EOF {
+	//	return nil
+	//} else if err != nil {
+	//	return err
+	//}
+	//p := b.inventory[token]
+	//p.votebits = md
+	panic("loadVoteBits")
 	return nil
 }
 

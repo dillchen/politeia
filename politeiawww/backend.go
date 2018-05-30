@@ -1987,10 +1987,10 @@ func (b *backend) ProcessStartVote(sv www.StartVote, user *database.User) (*www.
 	return &rv, nil
 }
 
-func (b *backend) ProcessProposalVotes(gpv *www.ProposalVotes) (*www.ProposalVotesReply, error) {
-	log.Tracef("ProcessProposalVotes")
+func (b *backend) ProcessVoteResults(vr *www.VoteResults) (*www.VoteResultsReply, error) {
+	log.Tracef("ProcessVoteResults")
 
-	payload, err := decredplugin.EncodeVoteResults(gpv.Vote)
+	payload, err := decredplugin.EncodeVoteResults(convertVoteResultsFromWWW(*vr))
 	if err != nil {
 		return nil, err
 	}
@@ -2005,9 +2005,8 @@ func (b *backend) ProcessProposalVotes(gpv *www.ProposalVotes) (*www.ProposalVot
 		Challenge: hex.EncodeToString(challenge),
 		ID:        decredplugin.ID,
 		Command:   decredplugin.CmdProposalVotes,
-		CommandID: decredplugin.CmdProposalVotes + " " +
-			gpv.Vote.Token,
-		Payload: string(payload),
+		CommandID: decredplugin.CmdProposalVotes + " " + vr.Token,
+		Payload:   string(payload),
 	}
 
 	responseBody, err := b.makeRequest(http.MethodPost,
@@ -2033,11 +2032,8 @@ func (b *backend) ProcessProposalVotes(gpv *www.ProposalVotes) (*www.ProposalVot
 	if err != nil {
 		return nil, err
 	}
-
-	return &www.ProposalVotesReply{
-		Vote:      vrr.Vote,
-		CastVotes: vrr.CastVotes,
-	}, nil
+	wvrr := convertVoteResultsReplyFromDecredplugin(*vrr)
+	return &wvrr, nil
 }
 
 // ProcessPolicy returns the details of Politeia's restrictions on file uploads.

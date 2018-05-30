@@ -821,29 +821,29 @@ func (p *politeiawww) handleCastVotes(w http.ResponseWriter, r *http.Request) {
 	util.RespondWithJSON(w, http.StatusOK, avr)
 }
 
-// handleProposalVotes returns a proposal + all voting action.
-func (p *politeiawww) handleProposalVotes(w http.ResponseWriter, r *http.Request) {
-	log.Tracef("handleProposalVotes")
+// handleVoteResults returns a proposal + all voting action.
+func (p *politeiawww) handleVoteResults(w http.ResponseWriter, r *http.Request) {
+	log.Tracef("handleVoteResults")
 
-	var gpv v1.ProposalVotes
+	var vr v1.VoteResults
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&gpv); err != nil {
-		RespondWithError(w, r, 0, "handleProposalVotes: unmarshal",
+	if err := decoder.Decode(&vr); err != nil {
+		RespondWithError(w, r, 0, "handleVoteResults: unmarshal",
 			v1.UserError{
 				ErrorCode: v1.ErrorStatusInvalidInput,
 			})
 		return
 	}
 
-	gpvr, err := p.backend.ProcessProposalVotes(&gpv)
+	vrr, err := p.backend.ProcessVoteResults(&vr)
 	if err != nil {
 		RespondWithError(w, r, 0,
-			"handleProposalVotes: ProcessProposalVotes %v",
+			"handleVoteResults: ProcessVoteResults %v",
 			err)
 		return
 	}
 
-	util.RespondWithJSON(w, http.StatusOK, gpvr)
+	util.RespondWithJSON(w, http.StatusOK, vrr)
 }
 
 // handleStartVote handles starting a vote.
@@ -1080,8 +1080,8 @@ func _main() error {
 		permissionPublic, true)
 	p.addRoute(http.MethodPost, v1.RouteCastVotes, p.handleCastVotes,
 		permissionPublic, true)
-	p.addRoute(http.MethodPost, v1.RouteProposalVotes,
-		p.handleProposalVotes, permissionPublic, true)
+	p.addRoute(http.MethodPost, v1.RouteVoteResults,
+		p.handleVoteResults, permissionPublic, true)
 
 	// Routes that require being logged in.
 	p.addRoute(http.MethodPost, v1.RouteSecret, p.handleSecret,
